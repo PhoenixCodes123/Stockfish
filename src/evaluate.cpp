@@ -1242,29 +1242,11 @@ namespace {
                  + KDP[7] * mg_value(score) / 8                                  // (~8 Elo)
                  + KDP[8] * kingFlankDefense                                     // (~5 Elo)
                  + KDP[9];                                                       // (~0.5 Elo)
-#ifdef CRAZYHOUSE
-    if (pos.is_house())
-    {
-        kingDanger += KingDangerInHand[ALL_PIECES] * pos.count_in_hand<ALL_PIECES>(Them);
-        kingDanger += KingDangerInHand[PAWN] * pos.count_in_hand<PAWN>(Them);
-        kingDanger += KingDangerInHand[KNIGHT] * pos.count_in_hand<KNIGHT>(Them);
-        kingDanger += KingDangerInHand[BISHOP] * pos.count_in_hand<BISHOP>(Them);
-        kingDanger += KingDangerInHand[ROOK] * pos.count_in_hand<ROOK>(Them);
-        kingDanger += KingDangerInHand[QUEEN] * pos.count_in_hand<QUEEN>(Them);
-        h = pos.count_in_hand<QUEEN>(Them) ? weak & ~pos.pieces() : 0;
-    }
-#endif
 
     // Transform the kingDanger units into a Score, and subtract it from the evaluation
     if (kingDanger > 100)
     {
         int v = kingDanger * kingDanger / 4096;
-#ifdef CRAZYHOUSE
-        if (pos.is_house() && Us == pos.side_to_move())
-            v -= v / 10;
-        if (pos.is_house())
-            v = std::min(v, (int)QueenValueMg);
-#endif
         score -= make_score(v, kingDanger / 16 + KDP[10] * v / 256);
     }
 
@@ -1641,6 +1623,26 @@ namespace {
             score += std::max(SCORE_ZERO, ThreatByBlast * count);
         }
         score -= AtomicConfinedKing * popcount(attacks_bb<KING>(pos.square<KING>(Us)) & pos.pieces());
+    }
+#endif
+#ifdef CRAZYHOUSE
+    if (pos.is_house())
+    {
+        const auto KDP = KingDangerParams[CRAZYHOUSE_VARIANT];
+        int kingDanger = 0;
+        score += pos.phand_score<Us>();
+
+        kingDanger += KingDangerInHand[ALL_PIECES] * pos.count_in_hand<ALL_PIECES>(Them);
+        kingDanger += KingDangerInHand[PAWN] * pos.count_in_hand<PAWN>(Them);
+        kingDanger += KingDangerInHand[KNIGHT] * pos.count_in_hand<KNIGHT>(Them);
+        kingDanger += KingDangerInHand[BISHOP] * pos.count_in_hand<BISHOP>(Them);
+        kingDanger += KingDangerInHand[ROOK] * pos.count_in_hand<ROOK>(Them);
+        kingDanger += KingDangerInHand[QUEEN] * pos.count_in_hand<QUEEN>(Them);
+
+        int v = kingDanger * kingDanger / 4096;
+        if (Us == pos.side_to_move())
+            v -= v / 2;
+        score -= make_score(kingDanger / 16 + KDP[10] * v / 256, v);
     }
 #endif
 #ifdef HORDE

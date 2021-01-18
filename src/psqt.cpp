@@ -795,16 +795,15 @@ constexpr Score PBonus[RANK_NB][FILE_NB] =
   };
 #ifdef CRAZYHOUSE
 constexpr Score inHandBonus[PIECE_TYPE_NB] = {
-    S(0, 0), S(52, 13), S(66, 30), S(4, 4), S(13, 3), S(25, 9)
+  S(0, 0), S(52, 13), S(66, 30), S(4, 4), S(13, 3), S(25, 9), S(0, 0)
 };
 #endif
 
 #undef S
 
-#ifdef CRAZYHOUSE
-Score psq[VARIANT_NB][PIECE_NB][SQUARE_NB+1];
-#else
 Score psq[VARIANT_NB][PIECE_NB][SQUARE_NB];
+#ifdef CRAZYHOUSE
+Score phand[PIECE_TYPE_NB];
 #endif
 
 
@@ -832,10 +831,7 @@ for (Variant var = CHESS_VARIANT; var < VARIANT_NB; ++var)
       }
 #ifdef CRAZYHOUSE
       if (var == CRAZYHOUSE_VARIANT)
-      {
-          psq[var][ pc][SQ_NONE] = score + inHandBonus[type_of(pc)];
-          psq[var][~pc][SQ_NONE] = -psq[var][pc][SQ_NONE];
-      }
+          phand[type_of(pc)] = score + inHandBonus[type_of(pc)];
 #endif
   }
 }
