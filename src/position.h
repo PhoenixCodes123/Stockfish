@@ -305,6 +305,9 @@ public:
   bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
+#ifdef CRAZYHOUSE
+  template<Color Us> Score phand_score() const;
+#endif
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
 
@@ -346,6 +349,9 @@ private:
   int gamePly;
   Color sideToMove;
   Score psq;
+#ifdef CRAZYHOUSE
+  Score phand[COLOR_NB];
+#endif
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
@@ -354,10 +360,9 @@ private:
 };
 
 namespace PSQT {
-#ifdef CRAZYHOUSE
-  extern Score psq[VARIANT_NB][PIECE_NB][SQUARE_NB+1];
-#else
   extern Score psq[VARIANT_NB][PIECE_NB][SQUARE_NB];
+#ifdef CRAZYHOUSE
+  extern Score phand[PIECE_TYPE_NB];
 #endif
 }
 
@@ -632,6 +637,13 @@ inline Score Position::psq_score() const {
   return psq;
 }
 
+#ifdef CRAZYHOUSE
+template<Color Us>
+inline Score Position::phand_score() const {
+  return phand[Us];
+}
+#endif
+
 inline Value Position::non_pawn_material(Color c) const {
   return st->nonPawnMaterial[c];
 }
@@ -896,13 +908,13 @@ template<PieceType Pt> inline int Position::count_in_hand() const {
 inline void Position::add_to_hand(Color c, PieceType pt) {
   pieceCountInHand[c][pt]++;
   pieceCountInHand[c][ALL_PIECES]++;
-  psq += PSQT::psq[CRAZYHOUSE_VARIANT][make_piece(c, pt)][SQ_NONE];
+  phand[c] += PSQT::phand[pt];
 }
 
 inline void Position::remove_from_hand(Color c, PieceType pt) {
   pieceCountInHand[c][pt]--;
   pieceCountInHand[c][ALL_PIECES]--;
-  psq -= PSQT::psq[CRAZYHOUSE_VARIANT][make_piece(c, pt)][SQ_NONE];
+  phand[c] -= PSQT::phand[pt];
 }
 
 inline bool Position::is_promoted(Square s) const {
