@@ -56,14 +56,27 @@ else
 endif
 
 ### Source and object files
+ifeq ($(nnue),yes)
+CXXFLAGS += -DUSE_NNUE
+endif
+ifeq (,$(filter -DUSE_NNUE,$(CXXFLAGS)))
+SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
+	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
+	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp
+else
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp nnue/features/half_ka_v2_hm.cpp
+endif
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
+ifeq (,$(filter -DUSE_NNUE,$(CXXFLAGS)))
+VPATH = syzygy
+else
 VPATH = syzygy:nnue:nnue/features
+endif
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -95,6 +108,7 @@ VPATH = syzygy:nnue:nnue/features
 # vnni256 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 256
 # vnni512 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
+# nnue = yes/no       --- -DUSE_NNUE       --- Use Effectively Updateable Neural Network
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -141,6 +155,7 @@ vnni256 = no
 vnni512 = no
 neon = no
 arm_version = 0
+nnue = no
 STRIP = strip
 
 ### 2.2 Architecture specific
@@ -819,6 +834,7 @@ clean: objclean profileclean
 
 # evaluation network (nnue)
 net:
+ifneq (,$(filter -DUSE_NNUE,$(CXXFLAGS)))
 	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	@echo "Default net: $(nnuenet)"
 	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
@@ -840,6 +856,7 @@ net:
          else \
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
+endif
 
 # clean binaries and objects
 objclean:
@@ -889,6 +906,7 @@ config-sanity: net
 	@echo "vnni512: '$(vnni512)'"
 	@echo "neon: '$(neon)'"
 	@echo "arm_version: '$(arm_version)'"
+	@echo "nnue: '$(nnue)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"

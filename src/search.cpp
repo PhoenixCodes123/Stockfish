@@ -127,7 +127,9 @@ namespace {
   uint64_t perft(Position& pos, Depth depth) {
 
     StateInfo st;
+#ifdef USE_NNUE
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+#endif
 
     uint64_t cnt, nodes = 0;
     const bool leaf = (depth == 2);
@@ -190,7 +192,9 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
+#ifdef USE_NNUE
   Eval::NNUE::verify();
+#endif
 
   if (rootMoves.empty())
   {
@@ -546,7 +550,9 @@ namespace {
 
     Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
     StateInfo st;
+#ifdef USE_NNUE
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+#endif
 
     TTEntry* tte;
     Key posKey;
@@ -1385,7 +1391,9 @@ moves_loop: // When in check, search starts here
 
     Move pv[MAX_PLY+1];
     StateInfo st;
+#ifdef USE_NNUE
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+#endif
 
     TTEntry* tte;
     Key posKey;
@@ -1889,7 +1897,9 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     StateInfo st;
+#ifdef USE_NNUE
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+#endif
 
     bool ttHit;
 

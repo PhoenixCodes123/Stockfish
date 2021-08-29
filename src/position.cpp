@@ -79,7 +79,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       && !pos.can_castle(ANY_CASTLING))
   {
       StateInfo st;
+#ifdef USE_NNUE
       ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+#endif
 
       Position p;
       p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
@@ -702,10 +704,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->pliesFromNull;
 
   // Used by NNUE
+#ifdef USE_NNUE
   st->accumulator.computed[WHITE] = false;
   st->accumulator.computed[BLACK] = false;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
+#endif
 
   Color us = sideToMove;
   Color them = ~us;
@@ -754,6 +758,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
+#ifdef USE_NNUE
       if (Eval::useNNUE)
       {
           dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
@@ -761,6 +766,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           dp.from[1] = capsq;
           dp.to[1] = SQ_NONE;
       }
+#endif
 
       // Update board and piece lists
       remove_piece(capsq);
@@ -798,12 +804,14 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
+#ifdef USE_NNUE
       if (Eval::useNNUE)
       {
           dp.piece[0] = pc;
           dp.from[0] = from;
           dp.to[0] = to;
       }
+#endif
 
       move_piece(from, to);
   }
@@ -829,6 +837,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
+#ifdef USE_NNUE
           if (Eval::useNNUE)
           {
               // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
@@ -838,6 +847,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
               dp.to[dp.dirty_num] = to;
               dp.dirty_num++;
           }
+#endif
 
           // Update hash keys
           k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -967,6 +977,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
+#ifdef USE_NNUE
   if (Do && Eval::useNNUE)
   {
       auto& dp = st->dirtyPiece;
@@ -978,6 +989,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
       dp.to[1] = rto;
       dp.dirty_num = 2;
   }
+#endif
 
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(Do ? from : to);
@@ -996,15 +1008,21 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
+#ifdef USE_NNUE
   std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+#else
+  std::memcpy(&newSt, st, sizeof(StateInfo));
+#endif
 
   newSt.previous = st;
   st = &newSt;
 
+#ifdef USE_NNUE
   st->dirtyPiece.dirty_num = 0;
   st->dirtyPiece.piece[0] = NO_PIECE; // Avoid checks in UpdateAccumulator()
   st->accumulator.computed[WHITE] = false;
   st->accumulator.computed[BLACK] = false;
+#endif
 
   if (st->epSquare != SQ_NONE)
   {
@@ -1285,7 +1303,7 @@ void Position::flip() {
 
 bool Position::pos_is_ok() const {
 
-  constexpr bool Fast = true; // Quick (default) or full check?
+  constexpr bool Fast = false; // Quick (default) or full check?
 
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(square<KING>(WHITE)) != W_KING
@@ -1319,7 +1337,9 @@ bool Position::pos_is_ok() const {
               assert(0 && "pos_is_ok: Bitboards");
 
   StateInfo si = *st;
+#ifdef USE_NNUE
   ASSERT_ALIGNED(&si, Eval::NNUE::CacheLineSize);
+#endif
 
   set_state(&si);
   if (std::memcmp(&si, st, sizeof(StateInfo)))

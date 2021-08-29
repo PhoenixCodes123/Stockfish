@@ -33,6 +33,7 @@ namespace Eval {
   std::string trace(Position& pos);
   Value evaluate(const Position& pos);
 
+#ifdef USE_NNUE
   extern bool useNNUE;
   extern std::string currentEvalFileName;
 
@@ -54,6 +55,7 @@ namespace Eval {
     bool save_eval(const std::optional<std::string>& filename);
 
   } // namespace NNUE
+#endif
 
 } // namespace Eval
 

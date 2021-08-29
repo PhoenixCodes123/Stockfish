@@ -45,6 +45,7 @@
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsoft Visual Studio.
+#ifdef USE_NNUE
 #if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
   INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #else
@@ -52,12 +53,14 @@
   const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
   const unsigned int         gEmbeddedNNUESize = 1;
 #endif
+#endif
 
 
 using namespace std;
 
 namespace Stockfish {
 
+#ifdef USE_NNUE
 namespace Eval {
 
   bool useNNUE;
@@ -147,6 +150,7 @@ namespace Eval {
         sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 }
+#endif
 
 namespace Trace {
 
@@ -1042,6 +1046,7 @@ make_v:
   }
 
 
+#ifdef USE_NNUE
   /// Fisher Random Chess: correction for cornered bishops, to fix chess960 play with NNUE
 
   Value fix_FRC(const Position& pos) {
@@ -1072,6 +1077,7 @@ make_v:
     return pos.side_to_move() == WHITE ?  Value(3 * correction)
                                        : -Value(3 * correction);
   }
+#endif
 
 } // namespace Eval
 
@@ -1082,6 +1088,7 @@ make_v:
 Value Eval::evaluate(const Position& pos) {
 
   Value v;
+#ifdef USE_NNUE
   bool useClassical = false;
 
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
@@ -1089,7 +1096,9 @@ Value Eval::evaluate(const Position& pos) {
   if (  !useNNUE
       || abs(eg_value(pos.psq_score())) * 5 > (849 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
   {
+#endif
       v = Evaluation<NO_TRACE>(pos).value();          // classical
+#ifdef USE_NNUE
       useClassical = abs(v) >= 298;
   }
 
@@ -1109,6 +1118,7 @@ Value Eval::evaluate(const Position& pos) {
        if (pos.is_chess960())
            v += fix_FRC(pos);
   }
+#endif
 
   // Damp down the evaluation linearly when shuffling
   v = v * (208 - pos.rule50_count()) / 208;
@@ -1167,25 +1177,31 @@ std::string Eval::trace(Position& pos) {
      << "|      Total | " << Term(TOTAL)
      << "+------------+-------------+-------------+-------------+\n";
 
+#ifdef USE_NNUE
   if (Eval::useNNUE)
       ss << '\n' << NNUE::trace(pos) << '\n';
+#endif
 
   ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
   v = pos.side_to_move() == WHITE ? v : -v;
   ss << "\nClassical evaluation   " << to_cp(v) << " (white side)\n";
+#ifdef USE_NNUE
   if (Eval::useNNUE)
   {
       v = NNUE::evaluate(pos, false);
       v = pos.side_to_move() == WHITE ? v : -v;
       ss << "NNUE evaluation        " << to_cp(v) << " (white side)\n";
   }
+#endif
 
   v = evaluate(pos);
   v = pos.side_to_move() == WHITE ? v : -v;
   ss << "Final evaluation       " << to_cp(v) << " (white side)";
+#ifdef USE_NNUE
   if (Eval::useNNUE)
      ss << " [with scaled NNUE, hybrid, ...]";
+#endif
   ss << "\n";
 
   return ss.str();
