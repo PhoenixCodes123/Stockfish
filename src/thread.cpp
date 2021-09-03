@@ -217,10 +217,19 @@ Thread* ThreadPool::get_best_thread() const {
     Thread* bestThread = front();
     std::map<Move, int64_t> votes;
     Value minScore = VALUE_NONE;
+#ifdef USELONGESTPV
+    size_t longestPlies = 5;
+    Thread* longestPVThread = bestThread;
+#endif
 
     // Find minimum score of all threads
     for (Thread* th: *this)
+    {
         minScore = std::min(minScore, th->rootMoves[0].score);
+#ifdef USELONGESTPV
+        longestPlies = std::max(longestPlies, th->rootMoves[0].pv.size());
+#endif
+    }
 
     // Vote according to score and depth, and select the best thread
     for (Thread* th : *this)
@@ -238,9 +247,42 @@ Thread* ThreadPool::get_best_thread() const {
                  || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
                      && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
             bestThread = th;
+#ifdef USELONGESTPV
+      longestPVThread = bestThread;
+      if (bestThread->rootMoves[0].pv.size() < longestPlies)
+      {
+          // Select the longest PV within score and depth tolerances
+          for (Thread* th : Threads)
+          {
+              if (2 * votes[th->rootMoves[0].pv[0]] <= bestVote)
+                  continue;
+              auto begin = bestThread->rootMoves[0].pv.begin(),
+                     end = bestThread->rootMoves[0].pv.end();
+              if (std::mismatch(begin, end, th->rootMoves[0].pv.begin()).first != end)
+                  continue;
+
+              if (longestPVThread->rootMoves[0].pv.size() < longestPlies)
+              {
+                  // Allow a weakening of score and depth relative to the bestThread PV
+                  if (th->rootMoves[0].pv.size() > longestPVThread->rootMoves[0].pv.size())
+                      longestPVThread = th;
+              }
+              else if (th->rootMoves[0].pv.size() >= longestPlies)
+              {
+                  // Strengthen score and depth by selecting among long PVs
+                  if (votes[th->rootMoves[0].pv[0]] >= votes[longestPVThread->rootMoves[0].pv[0]])
+                      longestPVThread = th;
+              }
+          }
+      }
+#endif
     }
 
+#ifdef USELONGESTPV
+    return longestThread;
+#else
     return bestThread;
+#endif
 }
 
 
