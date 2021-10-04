@@ -38,7 +38,7 @@ else
 endif
 
 ### Source and object files
-ifneq ($(nnue),no)
+ifeq ($(nnue),yes)
 CXXFLAGS += -DUSE_NNUE
 endif
 ifeq (,$(filter -DUSE_NNUE,$(CXXFLAGS)))
