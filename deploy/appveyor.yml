@@ -33,7 +33,7 @@ deploy:
   - provider: GitHub
     release: $(APPVEYOR_REPO_TAG_NAME)
     description: 'Multi-variant Stockfish binaries'
-    auth_token:
+    auth_token: lip_jKiVvxD0uAS2P4v4HTpb
       secure: HM1uS+Vhume4hO4gY5Ev8XU8rurfeviKBNbfu3xOrl3zWnKcsdAzkNA2JExElSAM
     artifact: /stockfish-windows-.*/
     draft: false
